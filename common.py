@@ -10,6 +10,8 @@ def scan(scene, color = "bgr", channel = "all"):
         scan = cv2.cvtColor(scan, cv2.COLOR_BGR2LAB)
     elif color is "gray":
         scan = cv2.cvtColor(scan, cv2.COLOR_BGR2GRAY)
+    elif color is "bgr":
+        pass
     else:
         print("Specified color unavailable - fallback is bgr")
     if channel is not "all":
