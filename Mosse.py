@@ -95,7 +95,7 @@ class Tracker(object):
         self.last_roi = roi = getRectSubPix(image, (width, height), (x, y))
         roi = self.preprocess(roi)
         self.last_resp, (dx, dy), self.psr = self.correlate(roi)
-        self.good = self.psr > 8.0
+        self.good = self.psr > 6.0
         if not self.good:
             return
 

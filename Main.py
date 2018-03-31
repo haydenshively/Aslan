@@ -1,77 +1,79 @@
-#DENSE OPTICAL FLOW MAY PROVIDE SIMILAR RESULTS UNDER CERTAIN CIRCUMSTANCES
-#this is really good at highlighting the contours of moving objects and ignoring background colors
-"""Temporal Average Optical Flow"""
-import cv2
-import numpy as np
-from common import *
-from Mosse import Tracker
-from Visuals import Grid3D#, DemoCube
+if __name__ == '__main__':
+	from time import sleep
+	from numpy import zeros_like
+	import cv2
+	from mosse import Tracker
 
-# setup TensorFlow thread
-from CustomThread import CustomThread
-from queue import Empty
-from TensorFlow import Faces
-thread_detector = CustomThread(Faces)
-thread_detector.start()
+	# setup camera
+	from FilmingStudio import *
+	camera = camera(0)
 
-#{SETUP CAMERA}
-scene = cameraView(0)
+	# setup TensorFlow thread
+	from CustomThread import CustomThread
+	from queue import Empty
+	from ai import Faces
+	thread_detector = CustomThread(Faces)
+	thread_detector.start()
 
-tracking = False
+	# setup scene
+	from scenes import Grid3D#, DemoCube
+	grid = Grid3D(12, 12, 12)#DemoCube()
+	prevX, prevY = None, None
 
-cube = Grid3D(12, 12, 12)#DemoCube()
-prevX, prevY = None, None
 
-while scene.isOpened():
-	image = scan(scene)
-	image = shrink(image, amount = 1)
-	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	tracking = False
 
-	box = None
-	while True:
+	while camera.isOpened():
 		try:
-			box = Faces.queue_result.get_nowait()
-		except Empty:
-			break
+			image = scan(camera)
+			image = shrink(image, amount = 1)
+			gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-	if box is not None:
-		roi = np.zeros_like(box)# roi will be the same as box, but with x and y flipped
-		roi[0::2] = box[1::2]
-		roi[1::2] = box[0::2]
-		roi = roi.tolist()
+			box = None
+			while True:
+				try: box = Faces.queue_result.get_nowait()
+				except Empty: break
 
-		tracker = Tracker(gray, roi)
-		tracking = True
+			if box is not None:
+				roi = zeros_like(box)# roi will be the same as box, but with x and y flipped
+				roi[0::2] = box[1::2]
+				roi[1::2] = box[0::2]
+				roi = roi.tolist()
 
-		# x1, y1, x2, y2 = roi#VIS
-		# cv2.rectangle(image, (x1, y1), (x2, y2), (0,0,255), 1)#VIS
+				tracker = Tracker(gray, roi)
+				tracking = True
 
-	if tracking:
-		tracker.update(gray)
-		x, y = tracker.position
+				# x1, y1, x2, y2 = roi#VIS
+				# cv2.rectangle(image, (x1, y1), (x2, y2), (0,0,255), 1)#VIS
 
-		if prevX is not None:
-			if prevX == x: Faces.queue_image.put(image)# attempt to re-initialize tracking
-			cube.adjustCamera((prevX - x)/24, (prevY - y)/24)
-			cube.render()
-		prevX, prevY = x, y
+			if tracking:
+				tracker.update(gray)
+				x, y = tracker.position
 
-		# cv2.circle(image, (int(x), int(y)), 5, (255,0,0), -1)#VIS
+				if prevX is not None:
+					if prevX == x: Faces.queue_image.put(image)# attempt to re-initialize tracking
+					grid.moveCameraBy((prevX - x)/24, (prevY - y)/24)
+					grid.render()
+				prevX, prevY = x, y
 
-	else: Faces.queue_image.put(image)# attempt to initialize tracking
+				# cv2.circle(image, (int(x), int(y)), 5, (255,0,0), -1)#VIS
 
-	cv2.imshow("image", image)
+			else: Faces.queue_image.put(image)# attempt to initialize tracking
 
-	ch = 0xFF & cv2.waitKey(1)
-	if ch == 27:
-		break
+			sleep(.03)
+			# cv2.imshow("image", image)#VIS
+			# ch = 0xFF & cv2.waitKey(1)
+			# if ch == 27:
+			# 	break
 
-# close windows
-del cube.window
-cv2.destroyAllWindows()
-# stop tensorflow thread
-thread_detector.stop()
-Faces.queue_image.put('break')
-thread_detector.join()
-# release camera
-scene.release()
+		except KeyboardInterrupt: break
+
+	# close windows
+	del grid.window
+	cv2.destroyAllWindows()
+	# stop tensorflow thread
+	thread_detector.stop()
+	Faces.queue_image.put('break')
+	thread_detector.join()
+	# release camera
+	camera.release()

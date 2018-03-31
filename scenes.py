@@ -73,7 +73,9 @@ def createWindow(renderer, width = 1920, height = 1080):
     window.AddRenderer(renderer)
     return window
 
-class DemoCube(object):
+from abstracts import Scene
+
+class DemoCube(Scene):
     def __init__(self):
         self.cube_data = createCube()
         self.cube_actor = createScene(self.cube_data)
@@ -84,12 +86,12 @@ class DemoCube(object):
         self.camY = 0
     def render(self):
         self.window.Render()
-    def adjustCamera(self, incX, incY):
+    def moveCameraBy(self, incX, incY):
         self.camX += incX
         self.camY += incY
         self.camera.SetPosition(self.camX, self.camY, 150)
 
-class Grid3D(object):
+class Grid3D(Scene):
     def __init__(self, height, width, depth, pointSize = 5):
         self.grid_data = create3DGrid(height, width, depth)
         self.grid_actor = createScene(self.grid_data)
@@ -101,7 +103,7 @@ class Grid3D(object):
         self.camY = 0
     def render(self):
         self.window.Render()
-    def adjustCamera(self, incX, incY):
+    def moveCameraBy(self, incX, incY):
         self.camX += incX
         self.camY += incY
         self.camera.SetPosition(self.camX, self.camY, 75)#TODO 50 (distance from object) should be adjusted based on face size

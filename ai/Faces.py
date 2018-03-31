@@ -3,15 +3,15 @@ import cv2
 import tensorflow as tf
 from queue import Queue, Empty
 
-from TensorFlow.ByGoogle import label_map_util
+from ai.ByGoogle import label_map_util
 
 enabled = False
 queue_image = Queue()
 queue_result = Queue()
 
 # MODEL INITIALIZATION
-path_to_ckpt = 'TensorFlow/Models/fullybaked/' + 'frozen_inference_graph.pb'
-path_to_labels = 'TensorFlow/Data/Generated/' + 'FDDB_label_map.pbtxt'
+path_to_ckpt = 'ai/Models/fullybaked/' + 'frozen_inference_graph.pb'
+path_to_labels = 'ai/Data/Generated/' + 'FDDB_label_map.pbtxt'
 
 num_classes = 1
 
