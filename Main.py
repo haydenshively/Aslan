@@ -16,8 +16,8 @@ if __name__ == '__main__':
 	thread_detector.start()
 
 	# setup scene
-	from scenes import Grid3D#, DemoCube
-	grid = Grid3D(12, 12, 12)#DemoCube()
+	from scenes import STL#Grid3D#, DemoCube
+	grid = STL('robot.stl')#Grid3D(12, 12, 12)#DemoCube()
 	prevX, prevY = None, None
 
 
