@@ -16,8 +16,8 @@ if __name__ == '__main__':
 	thread_detector.start()
 
 	# setup scene
-	from scenes import STL#Grid3D#, DemoCube
-	grid = STL('robot.stl')#Grid3D(12, 12, 12)#DemoCube()
+	from scenes import Grid3D#STL#DemoCube
+	grid = Grid3D(32, 48, 14)#STL('robot.stl')#DemoCube()
 	prevX, prevY = None, None
 
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
 				if prevX is not None:
 					if prevX == x: Faces.queue_image.put(image)# attempt to re-initialize tracking
-					grid.moveCameraBy((prevX - x)/24, (prevY - y)/24)
+					grid.moveCameraBy((prevX - x)/12, (prevY - y)/12)
 					grid.render()
 				prevX, prevY = x, y
 

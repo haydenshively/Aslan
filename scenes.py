@@ -11,7 +11,7 @@ from vtk import (
     vtkSTLReader
 )
 
-def create3DGrid(height, width, depth):
+def create3DGrid(height, width, depth, spacing = 1.0):
     # height
     ys = [i - height/2 for i in range(height)]*width*depth
     # width
@@ -27,7 +27,7 @@ def create3DGrid(height, width, depth):
     points = vtkPoints()
     vertices = vtkCellArray()
     for x, y, z in zip(xs, ys, zs):
-        id = points.InsertNextPoint([x, y, z])
+        id = points.InsertNextPoint([x*spacing, y*spacing, z*spacing])
         vertices.InsertNextCell(1)
         vertices.InsertCellPoint(id)
 
@@ -36,11 +36,11 @@ def create3DGrid(height, width, depth):
     grid.SetVerts(vertices)
     return grid
 
-def createCube():
+def createCube(height, width, depth):
     cube_data = vtkCubeSource()# initialize
-    cube_data.SetXLength(10)
-    cube_data.SetYLength(10)
-    cube_data.SetZLength(50)
+    cube_data.SetXLength(width)
+    cube_data.SetYLength(height)
+    cube_data.SetZLength(depth)
     return cube_data
 
 def createScene(poly_data):
@@ -60,10 +60,10 @@ def createCamera():
     camera.SetFocalPoint(0, 0, 0);
     return camera
 
-def createRenderer(camera, actor):
+def createRenderer(camera, actors):
     renderer = vtkRenderer()# initialize
     renderer.SetActiveCamera(camera)
-    renderer.AddActor(actor)
+    for actor in actors: renderer.AddActor(actor)
     renderer.SetBackground(0, 0, 0)# Background color white
     return renderer
 
@@ -78,8 +78,9 @@ from abstracts import Scene
 
 class DemoCube(Scene):
     def __init__(self):
-        self.cube_data = createCube()
+        self.cube_data = createCube(12, 12, 12)
         self.cube_actor = createScene(self.cube_data)
+        self.cube_actor.SetPosition(0, 0, -100)
         self.camera = createCamera()
         self.renderer = createRenderer(self.camera, self.cube_actor)
         self.window = createWindow(self.renderer)
@@ -90,15 +91,22 @@ class DemoCube(Scene):
     def moveCameraBy(self, incX, incY):
         self.camX += incX
         self.camY += incY
-        self.camera.SetPosition(self.camX, self.camY, 150)
+        self.camera.SetPosition(self.camX, self.camY, 200)#TODO distance from object should be adjusted based on face size
+        self.camera.SetFocalPoint(0, 0, -100);# first 2 params should be based on face angle or even gaze
 
 class Grid3D(Scene):
-    def __init__(self, height, width, depth, pointSize = 5):
-        self.grid_data = create3DGrid(height, width, depth)
+    def __init__(self, height, width, depth, pointSize = 4):
+        self.grid_data = create3DGrid(height, width, depth, 4.0)
         self.grid_actor = createScene(self.grid_data)
         self.grid_actor.GetProperty().SetPointSize(pointSize)
+        self.grid_actor.SetPosition(0, 0, 0)
+        #--------------
+        self.cube_data = createCube(16, 16, 120)
+        self.cube_actor = createScene(self.cube_data)
+        self.cube_actor.SetPosition(32, 16, 0)
+        #--------------
         self.camera = createCamera()
-        self.renderer = createRenderer(self.camera, self.grid_actor)
+        self.renderer = createRenderer(self.camera, [self.grid_actor, self.cube_actor])
         self.window = createWindow(self.renderer)
         self.camX = 0
         self.camY = 0
@@ -107,8 +115,8 @@ class Grid3D(Scene):
     def moveCameraBy(self, incX, incY):
         self.camX += incX
         self.camY += incY
-        self.camera.SetPosition(self.camX, self.camY, 75)#TODO 50 (distance from object) should be adjusted based on face size
-        # self.camera.SetFocalPoint(self.camX/3.0, self.camY/3.0, 0);# first 2 params should be based on face angle or even gaze
+        self.camera.SetPosition(self.camX, self.camY, 300)#TODO distance from object should be adjusted based on face size
+        self.camera.SetFocalPoint(0, 0, 0);# first 2 params should be based on gaze
 
 class STL(Scene):
     def __init__(self, filename):
@@ -120,7 +128,7 @@ class STL(Scene):
         self.renderer = createRenderer(self.camera, self.stl_actor)
         self.window = createWindow(self.renderer)#, 1920//2, 1080//2)
         self.camX = 50
-        self.camY = 10
+        self.camY = 100
     def render(self):
         self.window.Render()
     def moveCameraBy(self, incX, incY):
