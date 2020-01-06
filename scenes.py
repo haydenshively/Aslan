@@ -11,6 +11,9 @@ from vtk import (
     vtkSTLReader
 )
 
+SCREEN_X = 3072.0
+SCREEN_Y = 1920.0
+
 def create3DGrid(height, width, depth, spacing = 1.0):
     # height
     ys = [i - height/2 for i in range(height)]*width*depth
@@ -60,6 +63,15 @@ def createCamera():
     camera.SetFocalPoint(0, 0, 0);
     return camera
 
+def enableOffAxisProjectionFor(camera):
+    screen_x = SCREEN_X/SCREEN_X
+    screen_y = SCREEN_Y/SCREEN_X
+    camera.SetUseOffAxisProjection(True)
+    camera.SetScreenBottomLeft(-0.5*screen_x, -0.5*screen_y, -1)# x, y, z
+    camera.SetScreenBottomRight(0.5*screen_x, -0.5*screen_y, -1)# x, y, z
+    camera.SetScreenTopRight(0.5*screen_x, 0.5*screen_y, -1)# x, y, z
+    camera.SetEyeSeparation(0.06)# this is the default
+
 def createRenderer(camera, actors):
     renderer = vtkRenderer()# initialize
     renderer.SetActiveCamera(camera)
@@ -67,9 +79,9 @@ def createRenderer(camera, actors):
     renderer.SetBackground(0, 0, 0)# Background color white
     return renderer
 
-def createWindow(renderer, width = 1920, height = 1080):
+def createWindow(renderer, width = SCREEN_X, height = SCREEN_Y):
     window = vtkRenderWindow()# initialize
-    window.SetSize(width, height)
+    window.SetSize(int(width), int(height))
     window.SetPosition(0, 0)
     window.AddRenderer(renderer)
     return window
@@ -91,47 +103,123 @@ class DemoCube(Scene):
     def moveCameraBy(self, incX, incY):
         self.camX += incX
         self.camY += incY
-        self.camera.SetPosition(self.camX, self.camY, 200)#TODO distance from object should be adjusted based on face size
-        self.camera.SetFocalPoint(0, 0, -100);# first 2 params should be based on face angle or even gaze
+        #TODO distance from object should be adjusted based on face size
+        self.camera.SetPosition(self.camX, self.camY, 200)
+        #TODO first 2 params should be based on face angle or even gaze
+        self.camera.SetFocalPoint(0, 0, -100)
 
 class Grid3D(Scene):
     def __init__(self, height, width, depth, pointSize = 4):
-        self.grid_data = create3DGrid(height, width, depth, 4.0)
+        # CREATE ACTORS --------------------------------------------------------
+        # grid -----------------------------------------------------------------
+        self.grid_data = create3DGrid(height, width, depth, 0.05)
         self.grid_actor = createScene(self.grid_data)
         self.grid_actor.GetProperty().SetPointSize(pointSize)
         self.grid_actor.SetPosition(0, 0, 0)
-        #--------------
-        self.cube_data = createCube(16, 16, 120)
+        # cube -----------------------------------------------------------------
+        self.cube_data = createCube(0.05, 0.05, 0.25)
         self.cube_actor = createScene(self.cube_data)
-        self.cube_actor.SetPosition(32, 16, 0)
-        #--------------
+        self.cube_actor.SetPosition(0, 0, 0)
+        self.cube_actor.GetProperty().SetAmbient(0.5)# add ambient light
+        # ----------------------------------------------------------------------
+        # PREPARE TO DISPLAY ---------------------------------------------------
+        # basic camera, renderer, and window -----------------------------------
         self.camera = createCamera()
         self.renderer = createRenderer(self.camera, [self.grid_actor, self.cube_actor])
         self.window = createWindow(self.renderer)
+        # off-axis projection --------------------------------------------------
+        enableOffAxisProjectionFor(self.camera)
+        # ----------------------------------------------------------------------
+        # INITIALIZE OTHER INSTANCE PROPERTIES ---------------------------------
         self.camX = 0
         self.camY = 0
+        # ----------------------------------------------------------------------
     def render(self):
         self.window.Render()
     def moveCameraBy(self, incX, incY):
-        self.camX += incX
-        self.camY += incY
-        self.camera.SetPosition(self.camX, self.camY, 300)#TODO distance from object should be adjusted based on face size
-        self.camera.SetFocalPoint(0, 0, 0);# first 2 params should be based on gaze
+        """
+        incX: number of pixels to increment in the X direction
+        incY: number of pixels to increment in the Y direction
+
+        We divide incX by SCREEN_X so that the result has units of "screen-widths"
+        We divide incY by SCREEN_Y so that the result has units of "screen-heights"
+        """
+        self.camX += (incX/SCREEN_X)
+        self.camY += (incY/SCREEN_Y)
+        # assume user is sitting W away from the screen (see comment in main.py)
+        self.camera.SetPosition(self.camX, self.camY, 1.0)
+        #TODO distance from object should be adjusted based on face size
+        self.camera.SetFocalPoint(0, 0, -1)
+
+    def moveCameraTo(self, x, y):
+        """
+        x: number of pixels to increment in the X direction
+        y: number of pixels to increment in the Y direction
+
+        We divide x by SCREEN_X so that the result has units of "screen-widths"
+        We divide y by SCREEN_Y so that the result has units of "screen-heights"
+        """
+        self.camX = (x/SCREEN_X)
+        self.camY = (y/SCREEN_Y)
+        # assume user is sitting W away from the screen (see comment in main.py)
+        self.camera.SetPosition(self.camX, self.camY, 1.0)
+        #TODO first 2 params should be based on face angle or even gaze
+        self.camera.SetFocalPoint(0, 0, -1)
 
 class STL(Scene):
     def __init__(self, filename):
+        # CREATE ACTORS --------------------------------------------------------
+        # stl file -------------------------------------------------------------
         self.stl_data = vtkSTLReader()
         self.stl_data.SetFileName(filename)
         self.stl_actor = createScene(self.stl_data)
+        self.stl_actor.SetScale(0.1, 0.1, 0.1)
+        """
+        This is a minimal example. You can do a lot more to make things look
+        better. For example, rotate the actor:
         self.stl_actor.RotateX(-90)
+        """
+        # ----------------------------------------------------------------------
+        # PREPARE TO DISPLAY ---------------------------------------------------
+        # basic camera, renderer, and window -----------------------------------
         self.camera = createCamera()
-        self.renderer = createRenderer(self.camera, self.stl_actor)
-        self.window = createWindow(self.renderer)#, 1920//2, 1080//2)
-        self.camX = 50
-        self.camY = 100
+        self.renderer = createRenderer(self.camera, [self.stl_actor])
+        self.window = createWindow(self.renderer)
+        # off-axis projection --------------------------------------------------
+        enableOffAxisProjectionFor(self.camera)
+        # ----------------------------------------------------------------------
+        # INITIALIZE OTHER INSTANCE PROPERTIES ---------------------------------
+        self.camX = 0
+        self.camY = 0
+        # ----------------------------------------------------------------------
     def render(self):
         self.window.Render()
     def moveCameraBy(self, incX, incY):
-        self.camX += incX
-        self.camY += incY
-        self.camera.SetPosition(self.camX, self.camY, 200)
+        """
+        incX: number of pixels to increment in the X direction
+        incY: number of pixels to increment in the Y direction
+
+        We divide incX by SCREEN_X so that the result has units of "screen-widths"
+        We divide incY by SCREEN_Y so that the result has units of "screen-heights"
+        """
+        self.camX += (incX/SCREEN_X)
+        self.camY += (incY/SCREEN_Y)
+        # assume user is sitting W away from the screen (see comment in main.py)
+        self.camera.SetPosition(self.camX, self.camY, 1.0)
+        #TODO distance from object should be adjusted based on face size
+        self.camera.SetFocalPoint(0, 0, -1)
+
+    def moveCameraTo(self, x, y):
+        """
+        x: number of pixels to increment in the X direction
+        y: number of pixels to increment in the Y direction
+
+        We divide x by SCREEN_X so that the result has units of "screen-widths"
+        We divide y by SCREEN_Y so that the result has units of "screen-heights"
+        """
+        self.camX = (x/SCREEN_X)
+        self.camY = (y/SCREEN_Y)
+        # assume user is sitting W away from the screen (see comment in main.py)
+        self.camera.SetPosition(self.camX, self.camY, 1.0)
+        #TODO first 2 params should be based on face angle or even gaze
+        self.camera.SetFocalPoint(0, 0, -1)
